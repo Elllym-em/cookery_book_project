@@ -1,18 +1,21 @@
+from django.db.models import Sum
+from django.http import HttpResponse
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import (AllowAny, IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
 
-from recipes.models import Ingredient, Recipe, Tag
+from recipes.models import (Cart, Favorite, Ingredient, IngredientAmount,
+                            Recipe, Tag)
 from users.models import Follow, User
 from .mixins import CreateListDestroyViewSet
-from .serializers import (
-    CustomUserSerializer, FollowSerializer,
-    IngredientSerializer, RecipeListSerializer, RecipeCreateSerializer,
-    TagSerializer,
-)
-from .permissions import IsAdminOrReadOnly, IsAuthorOrAdminOrReadOnly, IsAuthorOrReadOnly
+from .paginations import CustomPagination
+from .permissions import IsAdminOrReadOnly, IsAuthor, IsAuthorOrAdminOrReadOnly
+from .serializers import (CartSerializer, CustomUserSerializer,
+                          FavoriteSerializer, FollowSerializer,
+                          IngredientSerializer, RecipeCreateSerializer,
+                          RecipeListSerializer, TagSerializer)
 
 
 class UserList(generics.ListAPIView):
@@ -23,6 +26,7 @@ class UserList(generics.ListAPIView):
     queryset = User.objects.all()
     serializer_class = CustomUserSerializer
     permission_classes = (AllowAny,)
+    pagination_class = CustomPagination
 
 
 class TagViewSet(viewsets.ModelViewSet):
@@ -33,6 +37,7 @@ class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     permission_classes = (IsAdminOrReadOnly,)
+    pagination_class = CustomPagination
 
 
 class IngredientViewSet(viewsets.ModelViewSet):
@@ -43,12 +48,14 @@ class IngredientViewSet(viewsets.ModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
     permission_classes = (IsAdminOrReadOnly,)
+    pagination_class = CustomPagination
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
-    """ Viewset для рецептов."""
+    """ Viewset для рецептов, включая избранное и список покупок."""
     queryset = Recipe.objects.all()
     permission_classes = (IsAuthenticatedOrReadOnly,)
+    pagination_class = CustomPagination
 
     def get_serializer_class(self):
         if self.request.method in permissions.SAFE_METHODS:
@@ -65,9 +72,102 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return (IsAdminOrReadOnly(),)
         return super().get_permissions()
 
+    @action(
+        detail=True, methods=['post', 'delete'], url_path='favorite',
+        permission_classes=[IsAuthor]
+    )
+    def favorite(self, request, pk):
+        recipe = Recipe.objects.get(pk=pk)
+
+        if request.method == 'POST':
+            favorite, created = Favorite.objects.get_or_create(
+                favorite_recipe=recipe,
+                author=request.user,
+            )
+            if created:
+                serializer = FavoriteSerializer(favorite)
+                return Response(
+                    serializer.data, status=status.HTTP_201_CREATED,
+                )
+            return Response(
+                {'errors': 'Рецепт уже добавлен в избранное'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if request.method == 'DELETE':
+            favorite = Favorite.objects.filter(favorite_recipe=recipe).exists()
+            if favorite:
+                Favorite.objects.get(
+                    favorite_recipe=recipe,
+                    author=request.user,
+                ).delete()
+                return Response(
+                    {'message': 'Рецепт успешно удален из избранного'},
+                    status=status.HTTP_204_NO_CONTENT,
+                    )
+            return Response(
+                {'errors': 'Рецепт не был добавлен в избранное'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(
+        detail=True, methods=['post', 'delete'], url_path='shopping_cart',
+        permission_classes=[IsAuthor]
+    )
+    def shopping_cart(self, request, pk):
+        recipe = Recipe.objects.get(pk=pk)
+
+        if request.method == 'POST':
+            shopping_cart, created = Cart.objects.get_or_create(
+                recipe=recipe,
+                author=request.user,
+            )
+            if created:
+                serializer = CartSerializer(shopping_cart)
+                return Response(
+                    serializer.data, status=status.HTTP_201_CREATED,
+                )
+            return Response(
+                {'errors': 'Рецепт уже добавлен в список покупок'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if request.method == 'DELETE':
+            in_shopping_cart = Cart.objects.filter(recipe=recipe).exists()
+            if in_shopping_cart:
+                Cart.objects.get(
+                    recipe=recipe,
+                    author=request.user,
+                ).delete()
+                return Response(
+                    {'message': 'Рецепт успешно удален из списка покупок'},
+                    status=status.HTTP_204_NO_CONTENT,
+                    )
+            return Response(
+                {'errors': 'Рецепт не был добавлен в список покупок'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(
+        detail=False, methods=['get'], url_path='download_shopping_cart',
+        permission_classes=[IsAuthor]
+    )
+    def download_shopping_cart(self, request):
+        ingredients = IngredientAmount.objects.filter(
+            recipe__recipe_in_cart__author=request.user
+        ).values_list(
+            'ingredients__name', 'ingredients__measurement_unit',
+        ).annotate(amount=Sum('amount'))
+
+        response = HttpResponse(ingredients, 'Content-Type:text/plane')
+        response['Content-Disposition'] = ('attachment;'
+                                           'filename=shopping_cart.txt')
+        return response
+
 
 class FollowViewSet(CreateListDestroyViewSet):
     """ Viewset для реализации функционала подписок."""
+    pagination_class = CustomPagination
 
     def get_queryset(self):
         return self.request.user.follower.all()
@@ -77,8 +177,7 @@ class FollowViewSet(CreateListDestroyViewSet):
             permission_classes=[IsAuthenticated]
     )
     def subscriptions(self, request):
-        follower = request.user
-        subscriptions = User.objects.filter(author__follower=follower)
+        subscriptions = User.objects.filter(author__follower=request.user)
         serializer = FollowSerializer(subscriptions, many=True)
         return Response(serializer.data)
 
@@ -87,13 +186,12 @@ class FollowViewSet(CreateListDestroyViewSet):
         permission_classes=[IsAuthenticated]
     )
     def subscribe(self, request, pk):
-        follower = request.user
         author = User.objects.get(pk=pk)
 
         if request.method == 'POST':
             subscribe, created = Follow.objects.get_or_create(
                 author=author,
-                follower=follower,
+                follower=request.user,
             )
             if created:
                 serializer = FollowSerializer(subscribe.author)
@@ -106,17 +204,16 @@ class FollowViewSet(CreateListDestroyViewSet):
             )
 
         if request.method == 'DELETE':
-            try:
-                subscribe = Follow.objects.get(
-                    author=author, follower=follower
-                )
-                subscribe.delete()
+            subscribe = Follow.objects.filter(author=author).exists()
+            if subscribe:
+                Follow.objects.get(
+                    author=author, follower=request.user
+                ).delete()
                 return Response(
                     {'message': 'Успешная отписка'},
                     status=status.HTTP_204_NO_CONTENT,
                     )
-            except Follow.DoesNotExist:
-                Response(
-                    {'errors': 'Вы не были подписаны на этого автора'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            return Response(
+                {'errors': 'Вы не были подписаны на этого автора'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )

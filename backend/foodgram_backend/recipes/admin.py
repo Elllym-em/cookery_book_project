@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Ingredient, IngredientAmount, Recipe, Tag
+from .models import Cart, Favorite, Ingredient, IngredientAmount, Recipe, Tag
 
 
 class IngredientAmountInline(admin.TabularInline):
@@ -41,3 +41,21 @@ class TadAdmin(admin.ModelAdmin):
     )
     list_filter = ('name',)
     search_fields = ('name',)
+
+
+@admin.register(Favorite)
+class FavoriteAdmin(admin.ModelAdmin):
+    list_display = (
+        'author',
+        'favorite_recipe',
+    )
+    search_fields = ('author', 'favorite_recipe',)
+
+
+@admin.register(Cart)
+class CartAdmin(admin.ModelAdmin):
+    list_display = (
+        'author',
+        'recipe',
+    )
+    search_fields = ('author', 'recipe',)

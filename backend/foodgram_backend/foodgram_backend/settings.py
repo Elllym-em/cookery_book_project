@@ -132,6 +132,7 @@ DJOSER = {
     'SERIALIZERS': {
         'user_create': 'api_foodgram.serializers.CustomUserCreateSerializer',
         'user': 'api_foodgram.serializers.CustomUserSerializer',
+        'current_user': 'api_foodgram.serializers.CustomUserSerializer',
     },
     'PERMISSIONS': {
         'user_list': ['rest_framework.permissions.AllowAny'],

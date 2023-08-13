@@ -1,9 +1,10 @@
 from djoser.serializers import UserCreateSerializer, UserSerializer
-from rest_framework import serializers
 from drf_extra_fields.fields import Base64ImageField
+from rest_framework import serializers
 
+from recipes.models import (Cart, Favorite, Ingredient, IngredientAmount,
+                            Recipe, Tag)
 from users.models import Follow, User
-from recipes.models import Ingredient, IngredientAmount, Recipe, Tag
 
 
 class CustomUserCreateSerializer(UserCreateSerializer):
@@ -99,27 +100,44 @@ class CreateIngredientInRecipeSerializer(serializers.ModelSerializer):
 class RecipeListSerializer(serializers.ModelSerializer):
     """ Сериализатор для просмотра рецептов."""
     tags = TagSerializer(
-        many=True, read_only=True,
+        many=True,
     )
-    author = CustomUserSerializer(
-        read_only=True,
-    )
+    author = CustomUserSerializer()
     ingredients = IngredientAmountSerializer(
         source='am_ingredients',
-        many=True, read_only=True,
+        many=True,
     )
+    is_favorited = serializers.SerializerMethodField()
+    is_in_shopping_cart = serializers.SerializerMethodField()
 
     class Meta:
         model = Recipe
         fields = (
-            'id', 'tags', 'author', 'ingredients',
-            'name', 'image', 'text', 'cooking_time',
+            'id', 'tags', 'author', 'ingredients', 'name', 'is_favorited',
+            'is_in_shopping_cart', 'image', 'text', 'cooking_time',
         )
+        read_only_fields = ('__all__',)
+
+    def get_is_favorited(self, obj):
+        request = self.context.get('request')
+        if request.user.is_authenticated:
+            return Favorite.objects.filter(
+                favorite_recipe=obj, author=request.user
+            ).exists()
+        return False
+
+    def get_is_in_shopping_cart(self, obj):
+        request = self.context.get('request')
+        if request.user.is_authenticated:
+            return Cart.objects.filter(
+                recipe=obj, author=request.user
+            ).exists()
+        return False
 
 
 class RecipeCreateSerializer(serializers.ModelSerializer):
     """ Сериализатор создания рецепта."""
-    author = CustomUserCreateSerializer(
+    author = CustomUserSerializer(
         read_only=True,
     )
     tags = serializers.PrimaryKeyRelatedField(
@@ -193,6 +211,7 @@ class RecipeShortListSerializer(serializers.ModelSerializer):
         model = Recipe
         fields = (
             'id', 'name', 'image', 'cooking_time',)
+        read_only_fields = ('__all__',)
 
 
 class FollowSerializer(serializers.ModelSerializer):
@@ -216,3 +235,25 @@ class FollowSerializer(serializers.ModelSerializer):
 
     def get_is_subscribed(self, obj):
         return Follow.objects.filter(author=obj).exists()
+
+
+class FavoriteSerializer(serializers.ModelSerializer):
+    """ Сериализатор для добавления рецептов в избранное."""
+
+    class Meta:
+        model = Favorite
+        fields = ('author', 'favorite_recipe',)
+
+    def to_representation(self, instance):
+        return RecipeShortListSerializer(instance.favorite_recipe).data
+
+
+class CartSerializer(serializers.ModelSerializer):
+    """ Сериализатор для добавления рецептов в список покупок."""
+
+    class Meta:
+        model = Cart
+        fields = ('author', 'recipe',)
+
+    def to_representation(self, instance):
+        return RecipeShortListSerializer(instance.recipe).data

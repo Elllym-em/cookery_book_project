@@ -62,7 +62,6 @@ class Follow(models.Model):
             models.UniqueConstraint(
                 fields=['author', 'follower'],
                 name='unique_author_follower',
-
             ),
             models.CheckConstraint(
                 check=~models.Q(follower=models.F('author')),
@@ -71,4 +70,4 @@ class Follow(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.follower} {self.author}'
+        return f'{self.follower} подписан на {self.author}'
