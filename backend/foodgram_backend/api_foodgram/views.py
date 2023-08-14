@@ -1,6 +1,7 @@
 from django.db.models import Sum
+from django_filters.rest_framework import DjangoFilterBackend
 from django.http import HttpResponse
-from rest_framework import generics, permissions, status, viewsets
+from rest_framework import filters, generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import (AllowAny, IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
@@ -9,6 +10,7 @@ from rest_framework.response import Response
 from recipes.models import (Cart, Favorite, Ingredient, IngredientAmount,
                             Recipe, Tag)
 from users.models import Follow, User
+from .filters import RecipeFilters
 from .mixins import CreateListDestroyViewSet
 from .paginations import CustomPagination
 from .permissions import IsAdminOrReadOnly, IsAuthor, IsAuthorOrAdminOrReadOnly
@@ -49,6 +51,8 @@ class IngredientViewSet(viewsets.ModelViewSet):
     serializer_class = IngredientSerializer
     permission_classes = (IsAdminOrReadOnly,)
     pagination_class = CustomPagination
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('^name',)
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
@@ -56,6 +60,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     permission_classes = (IsAuthenticatedOrReadOnly,)
     pagination_class = CustomPagination
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = RecipeFilters
 
     def get_serializer_class(self):
         if self.request.method in permissions.SAFE_METHODS:

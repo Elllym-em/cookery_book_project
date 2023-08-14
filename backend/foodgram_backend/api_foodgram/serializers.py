@@ -217,9 +217,7 @@ class RecipeShortListSerializer(serializers.ModelSerializer):
 class FollowSerializer(serializers.ModelSerializer):
     """ Сериализатор для получения списка подписок."""
     is_subscribed = serializers.SerializerMethodField()
-    recipes = RecipeShortListSerializer(
-        many=True,
-    )
+    recipes = serializers.SerializerMethodField()
     recipes_count = serializers.SerializerMethodField()
 
     class Meta:
@@ -230,11 +228,18 @@ class FollowSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('__all__',)
 
-    def get_recipes_count(self, obj):
-        return obj.recipes.count()
-
     def get_is_subscribed(self, obj):
         return Follow.objects.filter(author=obj).exists()
+
+    def get_recipes(self, obj):
+        request = self.context.get('request')
+        recipes_limit = request.query_params.get('recipes_limit')
+        if recipes_limit is not None:
+            recipes = obj.recipes.all()[:int(recipes_limit)]
+        return RecipeShortListSerializer(recipes, many=True,).data
+
+    def get_recipes_count(self, obj):
+        return obj.recipes.count()
 
 
 class FavoriteSerializer(serializers.ModelSerializer):
