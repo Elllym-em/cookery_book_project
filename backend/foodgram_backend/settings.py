@@ -3,11 +3,11 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-x4yd@nw7f3!r^(7d9e)6bul1k!wf(@%g#--1)wsq*d^e6h@vg7'
+SECRET_KEY = os.getenv('SECRET_KEY', 'secret')
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -21,21 +21,25 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
-    'django_filters',
     'djoser',
+    'django_filters',
     'users.apps.UsersConfig',
     'recipes.apps.RecipesConfig',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'foodgram_backend.urls'
 
@@ -67,6 +71,17 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.getenv('POSTGRES_DB', 'django'),
+#         'USER': os.getenv('POSTGRES_USER', 'django'),
+#         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'django'),
+#         'HOST': os.getenv('DB_HOST', ''),
+#         'PORT': os.getenv('DB_PORT', 5432)
+#     }
+# }
 
 
 # Password validation
@@ -106,9 +121,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'collected_static'
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
@@ -136,8 +152,10 @@ DJOSER = {
         'current_user': 'api_foodgram.serializers.CustomUserSerializer',
     },
     'PERMISSIONS': {
-        'user_list': ['rest_framework.permissions.AllowAny'],
+        'user_create': ['rest_framework.permissions.AllowAny'],
         'user_delete': ['rest_framework.permissions.IsAdminUser'],
+        'user': ['djoser.permissions.CurrentUserOrAdmin'],
+        'user_list': ['rest_framework.permissions.AllowAny'],
     }
 }
 

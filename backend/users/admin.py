@@ -25,6 +25,6 @@ class UserAdmin(UserAdmin):
 class IngredientAdmin(admin.ModelAdmin):
     list_display = (
         'follower',
-        'author',   
+        'author',
     )
     search_fields = ('follower', 'author',)

@@ -1,4 +1,6 @@
 from django_filters import rest_framework as filters
+from rest_framework.filters import SearchFilter
+
 
 from recipes.models import Recipe
 
@@ -43,3 +45,7 @@ class RecipeFilters(filters.FilterSet):
         if value:
             return queryset.filter(tags__slug__in=value).distinct()
         return queryset
+
+
+class IngredientsFilter(SearchFilter):
+    search_param = 'name'

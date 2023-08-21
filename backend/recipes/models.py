@@ -134,7 +134,7 @@ class Favorite(models.Model):
         related_name='author_fav',
         verbose_name='Подписчик на рецепт'
     )
-    favorite_recipe = models.ForeignKey(
+    recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
         related_name='favorite',
@@ -145,13 +145,13 @@ class Favorite(models.Model):
         verbose_name_plural = 'Избранное'
         constraints = [
             models.UniqueConstraint(
-                fields=['author', 'favorite_recipe'],
-                name='unique_favorite_recipes_author',
+                fields=['author', 'recipe'],
+                name='unique_fav_recipes_author',
             )
         ]
 
     def __str__(self):
-        return f'{self.favorite_recipe} в избранном у {self.author}'
+        return f'{self.recipe} в избранном у {self.author}'
 
 
 class Cart(models.Model):

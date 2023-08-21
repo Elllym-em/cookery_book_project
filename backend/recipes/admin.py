@@ -28,9 +28,13 @@ class RecipeAdmin(admin.ModelAdmin):
         'name',
         'author',
         'pub_date',
+        'in_favorite',
     )
     list_filter = ('name', 'author', 'tags')
     search_fields = ('name', 'author', 'tags')
+
+    def in_favorite(self, obj):
+        return obj.favorite.count()
 
 
 @admin.register(Tag)
@@ -47,9 +51,9 @@ class TadAdmin(admin.ModelAdmin):
 class FavoriteAdmin(admin.ModelAdmin):
     list_display = (
         'author',
-        'favorite_recipe',
+        'recipe',
     )
-    search_fields = ('author', 'favorite_recipe',)
+    search_fields = ('author', 'recipe',)
 
 
 @admin.register(Cart)

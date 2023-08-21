@@ -122,7 +122,7 @@ class RecipeListSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request.user.is_authenticated:
             return Favorite.objects.filter(
-                favorite_recipe=obj, author=request.user
+                recipe=obj, author=request.user
             ).exists()
         return False
 
@@ -215,7 +215,7 @@ class RecipeShortListSerializer(serializers.ModelSerializer):
 
 
 class FollowSerializer(serializers.ModelSerializer):
-    """ Сериализатор для получения списка подписок."""
+    """ Сериализатор для подписок."""
     is_subscribed = serializers.SerializerMethodField()
     recipes = serializers.SerializerMethodField()
     recipes_count = serializers.SerializerMethodField()
@@ -234,8 +234,9 @@ class FollowSerializer(serializers.ModelSerializer):
     def get_recipes(self, obj):
         request = self.context.get('request')
         recipes_limit = request.query_params.get('recipes_limit')
+        recipes = obj.recipes.all()
         if recipes_limit is not None:
-            recipes = obj.recipes.all()[:int(recipes_limit)]
+            recipes = recipes[:int(recipes_limit)]
         return RecipeShortListSerializer(recipes, many=True,).data
 
     def get_recipes_count(self, obj):
@@ -247,10 +248,10 @@ class FavoriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Favorite
-        fields = ('author', 'favorite_recipe',)
+        fields = ('author', 'recipe',)
 
     def to_representation(self, instance):
-        return RecipeShortListSerializer(instance.favorite_recipe).data
+        return RecipeShortListSerializer(instance.recipe).data
 
 
 class CartSerializer(serializers.ModelSerializer):
