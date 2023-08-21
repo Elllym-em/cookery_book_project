@@ -85,7 +85,7 @@ class Recipe(models.Model):
             limit_value=1,
             message='Время приготовления должно'
             'быть больше или равно 1 минуте.'
-            ),)
+        ),)
     )
     pub_date = models.DateTimeField(
         verbose_name='Дата публикации',
@@ -119,7 +119,7 @@ class IngredientAmount(models.Model):
         verbose_name='Количество',
         validators=(MinValueValidator(
             limit_value=1, message='Количество должно быть больше или равно 1.'
-            ),)
+        ),)
     )
 
     def __str__(self):

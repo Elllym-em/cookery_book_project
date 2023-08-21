@@ -215,8 +215,8 @@ class FollowCreateView(APIView):
             )
         serializer = FollowSerializer(author, data=request.data)
         Follow.objects.get_or_create(
-                author=author,
-                follower=request.user,
+            author=author,
+            follower=request.user,
         )
         if serializer.is_valid():
             serializer.save()
