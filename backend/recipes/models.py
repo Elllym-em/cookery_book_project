@@ -1,5 +1,6 @@
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from colorfield.fields import ColorField
 
 from users.models import User
 
@@ -11,7 +12,7 @@ class Tag(models.Model):
         unique=True,
         max_length=200,
     )
-    color = models.CharField(
+    color = ColorField(
         verbose_name='Цвет в HEX',
         unique=True,
         max_length=7,
@@ -44,6 +45,12 @@ class Ingredient(models.Model):
     class Meta:
         verbose_name = 'Ингредиент'
         verbose_name_plural = 'Ингредиенты'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'measurement_unit'],
+                name='unique_unit_for_name',
+            ),
+        ]
 
     def __str__(self):
         return self.name
@@ -81,11 +88,18 @@ class Recipe(models.Model):
     )
     cooking_time = models.PositiveSmallIntegerField(
         verbose_name='Время приготовления',
-        validators=(MinValueValidator(
-            limit_value=1,
-            message='Время приготовления должно'
-            'быть больше или равно 1 минуте.'
-        ),)
+        validators=(
+            MinValueValidator(
+                limit_value=1,
+                message='Время приготовления должно'
+                'быть больше или равно 1 минуте.'
+            ),
+            MaxValueValidator(
+                limit_value=480,
+                message='Время приготовления должно'
+                'быть меньше 8 часов.'
+            ),
+        )
     )
     pub_date = models.DateTimeField(
         verbose_name='Дата публикации',
@@ -117,9 +131,12 @@ class IngredientAmount(models.Model):
     )
     amount = models.PositiveSmallIntegerField(
         verbose_name='Количество',
-        validators=(MinValueValidator(
-            limit_value=1, message='Количество должно быть больше или равно 1.'
-        ),)
+        validators=(
+            MinValueValidator(
+                limit_value=1,
+                message='Количество должно быть больше или равно 1.'
+            ),
+        )
     )
 
     def __str__(self):
@@ -160,7 +177,7 @@ class Cart(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='authors_shopping_cart',
-        verbose_name='F'
+        verbose_name='Владелец'
     )
     recipe = models.ForeignKey(
         Recipe,

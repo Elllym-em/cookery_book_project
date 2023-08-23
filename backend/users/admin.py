@@ -22,7 +22,7 @@ class UserAdmin(UserAdmin):
 
 
 @admin.register(Follow)
-class IngredientAdmin(admin.ModelAdmin):
+class FollowAdmin(admin.ModelAdmin):
     list_display = (
         'follower',
         'author',

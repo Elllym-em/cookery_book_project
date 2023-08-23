@@ -15,12 +15,8 @@ class RecipeFilters(filters.FilterSet):
         field_name='is_in_shopping_cart',
         method='get_is_in_shopping_cart',
     )
-    author = filters.CharFilter(
-        field_name='author',
-    )
-    tags = filters.CharFilter(
-        field_name='tags',
-        method='get_tags',
+    tags = filters.AllValuesMultipleFilter(
+        field_name='tags__slug',
     )
 
     class Meta:
@@ -38,12 +34,6 @@ class RecipeFilters(filters.FilterSet):
             return queryset.filter(
                 recipe_in_cart__author=self.request.user
             )
-        return queryset
-
-    def get_tags(self, queryset, name, value):
-        value = self.request.query_params.getlist('tags')
-        if value:
-            return queryset.filter(tags__slug__in=value).distinct()
         return queryset
 
 

@@ -25,6 +25,8 @@ INSTALLED_APPS = [
     'django_filters',
     'users.apps.UsersConfig',
     'recipes.apps.RecipesConfig',
+    'api_foodgram.apps.ApiFoodgramConfig',
+    'colorfield',
     'corsheaders',
 ]
 
@@ -146,6 +148,7 @@ REST_FRAMEWORK = {
 
 DJOSER = {
     'LOGIN_FIELD': 'email',
+    'HIDE_USERS': False,
     'SERIALIZERS': {
         'user_create': 'api_foodgram.serializers.CustomUserCreateSerializer',
         'user': 'api_foodgram.serializers.CustomUserSerializer',

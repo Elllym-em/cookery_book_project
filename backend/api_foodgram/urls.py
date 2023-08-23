@@ -15,7 +15,7 @@ router_api.register(r'users', UserViewSet, basename='users')
 urlpatterns = [
     path('users/subscriptions/', FollowListView.as_view()),
     path('users/<int:user_id>/subscribe/', FollowCreateView.as_view()),
+    path('', include(router_api.urls)),
     path('', include('djoser.urls')),
     path('auth/', include('djoser.urls.authtoken')),
-    path('', include(router_api.urls)),
 ]

@@ -2,6 +2,7 @@ from django.db.models import Sum
 from django_filters.rest_framework import DjangoFilterBackend
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from djoser.views import UserViewSet
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -24,7 +25,7 @@ from .serializers import (CartSerializer, CustomUserSerializer,
                           RecipeListSerializer, TagSerializer)
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(UserViewSet):
     """ Viewset для пользователей."""
     queryset = User.objects.all()
     serializer_class = CustomUserSerializer
@@ -161,7 +162,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def download_shopping_cart(self, request):
         pdfmetrics.registerFont(TTFont(
-            'Lato-Light', './font/lato-light.ttf', 'UTF-8')
+            'Lato-Light', './data/lato-light.ttf', 'UTF-8')
         )
 
         ingredients = IngredientAmount.objects.filter(
@@ -197,40 +198,36 @@ class FollowListView(generics.ListAPIView):
     pagination_class = CustomPagination
 
     def get_queryset(self):
-        return User.objects.filter(author__follower=self.request.user)
+        return Follow.objects.filter(follower=self.request.user)
 
 
 class FollowCreateView(APIView):
     """ View-класс для создания и удаления подписки."""
     permission_classes = (IsAuthenticated,)
-    pagination_class = CustomPagination
 
     def post(self, request, **kwargs):
-        author = get_object_or_404(User, id=kwargs['user_id'])
+        author = get_object_or_404(User, id=kwargs.get('user_id'))
 
         if Follow.objects.filter(author=author).exists():
             return Response(
                 {'errors': 'Вы уже подписаны на этого автора'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        serializer = FollowSerializer(author, data=request.data)
-        Follow.objects.get_or_create(
-            author=author,
-            follower=request.user,
+        serializer = FollowSerializer(
+            data=request.data,
+            context={'request': request, 'author': author}
         )
-        if serializer.is_valid():
-            serializer.save()
+        if serializer.is_valid(raise_exception=True):
+            serializer.save(author=author, follower=self.request.user)
         return Response(
             serializer.data, status=status.HTTP_201_CREATED,
         )
 
     def delete(self, request, **kwargs):
-        author = get_object_or_404(User, id=kwargs['user_id'])
-        subscribe = Follow.objects.filter(author=author).exists()
-        if subscribe:
-            Follow.objects.get(
-                author=author, follower=request.user
-            ).delete()
+        author = get_object_or_404(User, id=kwargs.get('user_id'))
+        subscribe = Follow.objects.filter(author=author)
+        if subscribe.exists():
+            subscribe.delete()
             return Response(
                 {'message': 'Успешная отписка'},
                 status=status.HTTP_204_NO_CONTENT,
