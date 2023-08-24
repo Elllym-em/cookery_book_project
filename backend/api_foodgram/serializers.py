@@ -90,7 +90,6 @@ class CreateIngredientInRecipeSerializer(serializers.ModelSerializer):
     id = serializers.PrimaryKeyRelatedField(
         queryset=Ingredient.objects.all(),
     )
-    amount = serializers.IntegerField()
 
     class Meta:
         model = IngredientAmount
@@ -169,11 +168,21 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
                 {'errors': 'Необходимо указать как минимум 1 тег.'},
                 code=status.HTTP_400_BAD_REQUEST
             )
-        if not data.get('ingredients'):
+        ingredients = data.get('ingredients')
+        if not ingredients:
             raise serializers.ValidationError(
                 {'errors': 'Необходимо указать как минимум 1 ингредиент.'},
                 code=status.HTTP_400_BAD_REQUEST
             )
+        unique_ingredients = []
+        for ingredient in ingredients:
+            ingredient_id = ingredient.get('id')
+            if ingredient_id in unique_ingredients:
+                raise serializers.ValidationError(
+                    {'errors': 'Ингредиенты не должны повторяться.'},
+                    code=status.HTTP_400_BAD_REQUEST
+                )
+            unique_ingredients.append(ingredient_id)
         return data
 
     def create(self, validated_data):

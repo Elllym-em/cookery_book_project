@@ -40,3 +40,16 @@ class IsAuthorOrAdminOrReadOnly(permissions.BasePermission):
             or obj.author == request.user
             or request.user.is_staff
         )
+
+
+class IsAuthForUsers(permissions.BasePermission):
+    """
+    Разрешение для неавторизованных пользователей
+    только на получение списка юзеров.
+    """
+
+    def has_permission(self, request, view):
+        return (
+            request.method == 'list'
+            or request.user.is_authenticated
+        )

@@ -1,4 +1,5 @@
 from django.db.models import Sum
+from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -18,19 +19,30 @@ from recipes.models import (Cart, Favorite, Ingredient, IngredientAmount,
 from users.models import Follow, User
 from .filters import IngredientsFilter, RecipeFilters
 from .paginations import CustomPagination
-from .permissions import IsAdminOrReadOnly, IsAuthor, IsAuthorOrAdminOrReadOnly
+from .permissions import (IsAdminOrReadOnly, IsAuthor,
+                          IsAuthorOrAdminOrReadOnly, IsAuthForUsers)
 from .serializers import (CartSerializer, CustomUserSerializer,
                           FavoriteSerializer, FollowSerializer,
                           IngredientSerializer, RecipeCreateSerializer,
                           RecipeListSerializer, TagSerializer)
 
 
-class UserViewSet(UserViewSet):
+class CustomUserViewSet(UserViewSet):
     """ Viewset для пользователей."""
     queryset = User.objects.all()
     serializer_class = CustomUserSerializer
-    permission_classes = (IsAuthenticatedOrReadOnly,)
+    permission_classes = (IsAuthForUsers,)
     pagination_class = CustomPagination
+
+    @action(
+        detail=False, methods=['get'], url_path='me',
+        permission_classes=[IsAuthenticated]
+    )
+    def me(self, request):
+        serializer = CustomUserSerializer(request.user)
+        return Response(
+            serializer.data, status=status.HTTP_200_OK,
+        )
 
 
 class TagViewSet(viewsets.ModelViewSet):
@@ -98,15 +110,12 @@ class RecipeViewSet(viewsets.ModelViewSet):
         )
 
     def perform_delete_action(
-        self, request, recipe, model, success_message, errors_message
+        self, request, recipe, model, errors_message
     ):
-        model_object = model.objects.filter(recipe=recipe).exists()
-        if model_object:
-            model.objects.get(
-                recipe=recipe, author=request.user
-            ).delete()
+        model_object = model.objects.filter(recipe=recipe)
+        if model_object.exists():
+            model_object.delete()
             return Response(
-                {'message': success_message},
                 status=status.HTTP_204_NO_CONTENT,
             )
         return Response(
@@ -119,7 +128,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         permission_classes=[IsAuthor]
     )
     def favorite(self, request, pk):
-        recipe = Recipe.objects.get(pk=pk)
+        recipe = get_object_or_404(Recipe, id=pk)
 
         if request.method == 'POST':
             return self.perform_create_action(
@@ -128,19 +137,17 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 'Рецепт уже добавлен в избранное',
             )
 
-        if request.method == 'DELETE':
-            return self.perform_delete_action(
-                request, recipe, Favorite,
-                'Рецепт успешно удален из избранного',
-                'Рецепт не был добавлен в избранное',
-            )
+        return self.perform_delete_action(
+            request, recipe, Favorite,
+            'Рецепт не был добавлен в избранное',
+        )
 
     @action(
         detail=True, methods=['post', 'delete'], url_path='shopping_cart',
         permission_classes=[IsAuthor]
     )
     def shopping_cart(self, request, pk):
-        recipe = Recipe.objects.get(pk=pk)
+        recipe = get_object_or_404(Recipe, id=pk)
 
         if request.method == 'POST':
             return self.perform_create_action(
@@ -149,12 +156,10 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 'Рецепт уже добавлен в список покупок',
             )
 
-        if request.method == 'DELETE':
-            return self.perform_delete_action(
-                request, recipe, Cart,
-                'Рецепт успешно удален из списка покупок',
-                'Рецепт не был добавлен в список покупок',
-            )
+        return self.perform_delete_action(
+            request, recipe, Cart,
+            'Рецепт не был добавлен в список покупок',
+        )
 
     @action(
         detail=False, methods=['get'], url_path='download_shopping_cart',
@@ -162,8 +167,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def download_shopping_cart(self, request):
         pdfmetrics.registerFont(TTFont(
-            'Lato-Light', './data/lato-light.ttf', 'UTF-8')
-        )
+            'Lato-Light', f'{settings.BASE_DIR}/data/lato-light.ttf', 'UTF-8'
+        ))
 
         ingredients = IngredientAmount.objects.filter(
             recipe__recipe_in_cart__author=request.user
@@ -217,8 +222,8 @@ class FollowCreateView(APIView):
             data=request.data,
             context={'request': request, 'author': author}
         )
-        if serializer.is_valid(raise_exception=True):
-            serializer.save(author=author, follower=self.request.user)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(author=author, follower=self.request.user)
         return Response(
             serializer.data, status=status.HTTP_201_CREATED,
         )
@@ -229,7 +234,6 @@ class FollowCreateView(APIView):
         if subscribe.exists():
             subscribe.delete()
             return Response(
-                {'message': 'Успешная отписка'},
                 status=status.HTTP_204_NO_CONTENT,
             )
         return Response(
