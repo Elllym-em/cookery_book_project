@@ -14,9 +14,7 @@ services:
       - fd_data:/var/lib/postgresql/data
 
   backend:
-    build:
-      context: ../backend
-      dockerfile: Dockerfile
+    image: ellym/foodgram_backend:latest
     env_file: ../.env
     depends_on:
       - db
@@ -25,9 +23,7 @@ services:
       - fd_media:/app/media/
 
   frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
+    image: ellym/foodgram_frontend:latest
     depends_on:
       - backend
     volumes:
