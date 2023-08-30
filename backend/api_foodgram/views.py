@@ -213,7 +213,10 @@ class FollowCreateView(APIView):
     def post(self, request, **kwargs):
         author = get_object_or_404(User, id=kwargs.get('user_id'))
 
-        if Follow.objects.filter(author=author).exists():
+        if Follow.objects.filter(
+            author=author,
+            follower=request.user
+        ).exists():
             return Response(
                 {'errors': 'Вы уже подписаны на этого автора'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -230,7 +233,7 @@ class FollowCreateView(APIView):
 
     def delete(self, request, **kwargs):
         author = get_object_or_404(User, id=kwargs.get('user_id'))
-        subscribe = Follow.objects.filter(author=author)
+        subscribe = Follow.objects.filter(author=author, follower=request.user)
         if subscribe.exists():
             subscribe.delete()
             return Response(
