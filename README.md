@@ -1,8 +1,8 @@
-# Проект ФУДГРАМ
-**Фудграм - сайт для публикации и обмена рецептами**
-Сайт доступен по адресу: https://foodgramrecipes.sytes.net/
+# Проект CookeryBook 
+**CookeryBook - сайт для публикации и обмена рецептами**
+Проект состоит из бэкенд-приложения на Django, фронтенд-приложения на React и API.
 
-## Для неавторизованных пользователей:
+### Для неавторизованных пользователей:
   1. Доступна главная страница.
   2. Доступна страница отдельного рецепта.
   3. Доступна страница любого пользователя.
@@ -10,7 +10,7 @@
   5. Доступна и работает система восстановления пароля.
   6. Доступна и работает форма регистрации.
 
-## Для авторизованных пользователей:
+### Для авторизованных пользователей:
   1. Доступна главная страница.
   2. Доступна страница другого пользователя.
   3. Доступна страница отдельного рецепта.
@@ -32,7 +32,54 @@
       c. есть возможность удалить свой рецепт.
   8. Доступна возможность выйти из системы.
 
-## Примеры запросов API(ниже представлен не полный список возможных запросов, подробнее информация представлена в документации к API по ссылке http://localhost/api/docs/):
+## Стек технологий:
+- Python 3
+- Django 3.2
+- DRF
+- Docker
+- Docker Compose
+- NGINX
+- Gunicorn
+- PostgreSQL
+
+## Как запустить проект в dev-режиме:
+Клонировать репозиторий и перейти в него в командной строке:
+```
+git clone git@github.com:Elllym-em/cookery_book_project.git
+```
+```
+cd cookery_book_project
+```
+Cоздать и активировать виртуальное окружение:
+```
+python3 -m venv env
+```
+* Если у вас Linux/macOS
+    ```
+    source env/bin/activate
+    ```
+* Если у вас windows
+    ```
+    source env/scripts/activate
+    ```
+Установить зависимости из файла requirements.txt:
+```
+pip install -r requirements.txt
+```
+Выполнить миграции:
+```
+python3 manage.py migrate
+```
+Запустить проект:
+```
+python3 manage.py runserver
+```
+Запустить команду импорта данных в БД:
+```
+python3 manage.py import_data
+```
+
+## Примеры запросов API:
 ### Запрос на регистрацию пользователя (POST):
 ```
 /api/users/
@@ -237,5 +284,35 @@
 }
 ```
 
-***Автор:***
+## Как развернуть проект локально:
+1. Установить на локальную машину 'Docker' и 'Docker Compose';
+2. Создать в корневой директории файл '.env' (пример создания в файле .env.example в корневой директории);
+3. Выполнить команду для запуска контейнеров
+```
+docker-compose up -d --build
+```
+4. Выполнить миграции
+```
+docker-compose exec backend python manage.py migrate
+```
+5. Запустить команду импорта данных в БД:
+```
+docker-compose exec backend python manage.py import_data
+```
+6. Собрать статику
+```
+docker-compose exec backend python manage.py collectstatic
+```
+7. Скопировать статику 
+```
+docker-compose exec backend cp -r /app/collected_static/. /static/static/
+```
+8. Создать суперпользователя
+```
+docker-compose exec backend python manage.py createsuperuser
+```
+9. Перейти в браузере по ссылке http://localhost:8080/
+10. Полная документация API будет доступна по ссылке http://localhost:8080/api/docs/
+
+**Автор (backend, docker-контейнеры, deploy):**
 [Элина Мустафаева](https://github.com/Elllym-em)
