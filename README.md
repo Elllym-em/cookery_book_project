@@ -70,13 +70,13 @@ pip install -r requirements.txt
 ```
 python3 manage.py migrate
 ```
-Запустить проект:
-```
-python3 manage.py runserver
-```
 Запустить команду импорта данных в БД:
 ```
 python3 manage.py import_data
+```
+Запустить проект:
+```
+python3 manage.py runserver
 ```
 
 ## Примеры запросов API:
